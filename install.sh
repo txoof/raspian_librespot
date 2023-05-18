@@ -122,6 +122,18 @@ check_apt_cache() {
   fi
 }
 
+fetch_file() {
+  local file_url=$1
+  local local_path=$2
+  if [ ! -f $local_path ]
+  then
+    curl -sSf "$file_url" --output "$local_path" && return 0 || return 1
+  else
+    return 0
+  fi
+
+}
+
 
 echo This script will compile and install Librespot and start it running as a daemon. 
 
@@ -142,7 +154,6 @@ else
   cd "$LS_TEMP_DIR" || abort 1 "$LS_TEMP_DIR exists, but is not accessible"
 fi
 
-
 echo "Building with cargo..."
 if [ ! -f $CARGO_TARGET ]
 then
@@ -152,7 +163,13 @@ else
   echo $CARGO_TARGET already exists
 fi
 
-# source files from raspotify
-#copy_files "${items[*]}" "$LS_TEMP_DIR/raspotify
+echo "Fetching unit and configuration files..."
 
+GIT_UNITFILE=https://raw.githubusercontent.com/txoof/raspian_librespot/main/librespot.service
+GIT_CONFFILE=https://raw.githubusercontent.com/txoof/raspian_librespot/main/librespot.conf
+PATH_UNITFILE=/etc/systemd/system/
+PATH_CONFFILE=/etc/librespot.conf
+
+fetch_file $GIT_UNITFILE $LS_TEMP_DIR/librespot.service || abort 1 "Failed to fetch $GIT_UNITFILE"
+fetch_file $GIT_CONFFILE $LS_TEMP_DIR/librespot.conf || abort 1 "Failed to fetch $GIT_CONFFILE"
 
