@@ -9,7 +9,7 @@ DynamicUser=yes
 SupplementaryGroups=audio
 Restart=always
 RestartSec=10
-ExecStart=/usr/bin/librespot --name ${LS_NAME} --backend ${LS_BACKEND}
+ExecStart=/usr/bin/librespot --name ${LS_NAME} --backend ${LS_BACKEND} --onevent ${LS_ONEVENT}
 
 
 
