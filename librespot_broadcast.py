@@ -8,13 +8,21 @@ from datetime import datetime
 # Broadcasting to all listening scripts
 broadcast_ip = 'localhost'  # Change to the appropriate IP address or hostname
 broadcast_port = 3400  # Change to the desired port number
+broadcast_name='librespot_broadcast'
 
 player_event = os.getenv('PLAYER_EVENT')
 
-json_data = {
+# data = {
+#     'message': 'Hello, subscribers!',
+#     'timestamp': '2023-05-17'
+# }
+
+json_dict = {
+   'broadcast_id': broadcast_name,
    'event_time': str(datetime.now()),
    'event': player_event,
 } 
+
 
 if player_event in ('session_connected', 'session_disconnected'):
     json_dict['user_name'] = os.environ['USER_NAME']
@@ -81,8 +89,9 @@ elif player_event == 'track_changed':
         json_dict['episode_metadata_fields'] = episode_metadata_fields
 
 
+
 # Encode JSON data as bytes
-json_data = json.dumps(data).encode('utf-8')
+json_data = json.dumps(json_dict).encode('utf-8')
 
 # Create a socket for broadcasting
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
