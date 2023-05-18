@@ -1,0 +1,18 @@
+[Unit]
+Description=Librespot Service
+Wants=network.target
+After=network.target
+
+[Service]
+EnvironmentFile=/etc/librespot.conf
+DynamicUser=yes
+SupplementaryGroups=audio
+Restart=always
+RestartSec=10
+ExecStart=/usr/bin/librespot --name ${LS_NAME} --backend ${LS_BACKEND}
+
+
+
+
+[Install]
+WantedBy=multi-user.target 
