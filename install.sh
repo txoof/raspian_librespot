@@ -29,17 +29,6 @@ abort() {
   exit "$exit_code"
 }
 
-copy_files() {
-  local items=($1)
-  local prefix=$2
-
-	echo "Copy these files from raspotify into the local system"
-
-  for item in "${items[@]}"; do
-    echo "${prefix}${item}*"
-  done
-}
-
 install_dpkg() {
   local packages=("$@")
   local packages_to_install=()
@@ -125,13 +114,22 @@ check_apt_cache() {
 fetch_file() {
   local file_url=$1
   local local_path=$2
-  if [ ! -f $local_path ]
-  then
-    curl -sSf "$file_url" --output "$local_path" && return 0 || return 1
-  else
-    return 0
-  fi
+  curl -sSf "$file_url" --output "$local_path" && return 0 || return 1
+}
 
+install_files() {
+  local -n dict=$1
+  local become=$2
+  for key in "${!dict[@]}"
+  do
+    echo "cp $key -> ${dict[$key]}"
+    if [[ $become ]]
+    then
+      sudo cp $key ${dict[$key]} || return 1
+    else 
+      cp $key ${dict[$key]} || return 1
+    fi
+  done
 }
 
 
@@ -143,7 +141,6 @@ if ! test_command "cargo -V";
 then
   install_rust
 fi
-
 
 # Check if temp directory already exists and repos are updated
 if [ ! -d "$LS_TEMP_DIR" ];
@@ -167,9 +164,40 @@ echo "Fetching unit and configuration files..."
 
 GIT_UNITFILE=https://raw.githubusercontent.com/txoof/raspian_librespot/main/librespot.service
 GIT_CONFFILE=https://raw.githubusercontent.com/txoof/raspian_librespot/main/librespot.conf
+GIT_ONEVENT=https://raw.githubusercontent.com/txoof/raspian_librespot/main/librespot_broadcast.py
 PATH_UNITFILE=/etc/systemd/system/
 PATH_CONFFILE=/etc/librespot.conf
+PATH_ONEVENT=/usr/bin/librespot_broadcast.py
+PATH_BIN=/usr/bin/librespot
 
 fetch_file $GIT_UNITFILE $LS_TEMP_DIR/librespot.service || abort 1 "Failed to fetch $GIT_UNITFILE"
 fetch_file $GIT_CONFFILE $LS_TEMP_DIR/librespot.conf || abort 1 "Failed to fetch $GIT_CONFFILE"
+fetch_file $GIT_ONEVENT $LS_TEMP_DIR/librespot_broadcast.py || abort 1 "Failed to fetch $GIT_ONEVENT"
+
+echo "Stopping existing librespot daemons..."
+if systemctl is-active --quiet librespot.service
+then
+  echo "Daemon is running, stopping now"
+  sudo systemctl stop librespot.service || abort 1 "Failed to stop librespot daemon"
+fi
+
+echo "Installing files..."
+
+# files to install
+declare -A INSTALL_DICT=(
+  ["$LS_TEMP_DIR/librespot.service"]="$PATH_UNITFILE"
+  ["$LS_TEMP_DIR/librespot.conf"]="$PATH_CONFFILE"
+  ["$CARGO_TARGET"]="$PATH_BIN"
+  ["$LS_TEMP_DIR/librespot_broadcast.py"]="$PATH_ONEVENT"
+)
+
+install_files INSTALL_DICT true || abort 1 "Failed to copy file"
+
+# TODO:
+# make sure to check the permissions on the broadcast script (755 or similar)
+
+echo "Enable and start daemon..."
+
+sudo systemctl enable librespot.service
+sudo systemctl start librespot.service
 
